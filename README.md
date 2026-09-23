@@ -137,6 +137,14 @@ make host-test
 
 Native and integration tests run with networking disabled, local TLS fixtures, and synthetic credentials. `make clean` removes build output.
 
+## Release
+
+The CLIProxyAPI plugin store installs from this repository's latest GitHub release.
+
+1. Set `pluginVersion` in `config.go`, for example `0.2.0`.
+2. Run `make package`. It writes `dist/release/quota-reset-router_<version>_linux_amd64.zip` (plugin, `LICENSE`, `THIRD_PARTY_NOTICES.md`) and `dist/release/checksums.txt`.
+3. Publish a GitHub release tagged `v<version>` with both files attached.
+
 ## Third-party notices
 
-Builds link the CLIProxyAPI plugin SDK (MIT) and `gopkg.in/yaml.v3` (MIT and Apache-2.0). Include their license notices when distributing binaries.
+Binary releases link the CLIProxyAPI plugin SDK (MIT), `gopkg.in/yaml.v3` (MIT and Apache-2.0), and the Go standard library (BSD-3-Clause). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

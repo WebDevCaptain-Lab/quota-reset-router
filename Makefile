@@ -21,8 +21,8 @@ native-test:
 host-test:
 	$(DOCKER) --cpus 1 --memory 384m --memory-swap 384m --network none --add-host api.anthropic.com:127.0.0.1 --add-host chatgpt.com:127.0.0.1 -e PLUGIN_ISOLATED_TEST=1 $(IMAGE) python3 tests/host_smoke.py dist
 
-package:
-	$(DOCKER) $(IMAGE) tar --owner=0 --group=0 --numeric-owner -czf dist/quota-reset-router_$(VERSION)_linux_amd64.tar.gz dist/quota-reset-router.so dist/SHA256SUMS README.md LICENSE
+package: linux-build
+	$(DOCKER) $(IMAGE) python3 scripts/package_release.py $(VERSION) linux amd64
 
 clean:
 	rm -rf dist coverage.out
