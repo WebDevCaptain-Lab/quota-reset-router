@@ -32,8 +32,8 @@ jobs:
             -subj /CN=api.anthropic.com \
             -addext subjectAltName=DNS:api.anthropic.com,DNS:chatgpt.com \
             -addext extendedKeyUsage=serverAuth
-          sudo security authorizationdb write com.apple.trust-settings.admin allow
           sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "$RUNNER_TEMP/fixture/cert.pem"
+          security verify-cert -c "$RUNNER_TEMP/fixture/cert.pem" -p ssl -s api.anthropic.com
           echo "127.0.0.1 api.anthropic.com chatgpt.com" | sudo tee -a /etc/hosts
           sudo dscacheutil -flushcache
           sudo killall -HUP mDNSResponder || true
