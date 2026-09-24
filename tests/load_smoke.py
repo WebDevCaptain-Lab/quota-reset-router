@@ -198,7 +198,7 @@ def main():
                 )
             except BaseException:
                 log.flush()
-                print(log_path.read_text(errors="replace")[-12000:], file=sys.stderr)
+                print(log_path.read_text(errors="replace"), file=sys.stderr)
                 raise
             finally:
                 stop(proc)
