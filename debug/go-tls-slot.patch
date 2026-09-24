@@ -1,0 +1,26 @@
+diff --git a/src/cmd/link/internal/ld/sym.go b/src/cmd/link/internal/ld/sym.go
+index 6ae1106..fba9d96 100644
+--- a/src/cmd/link/internal/ld/sym.go
++++ b/src/cmd/link/internal/ld/sym.go
+@@ -107,7 +107,7 @@ func (ctxt *Link) computeTLSOffset() {
+ 			 * and runtime/cgo/gcc_darwin_amd64.c.
+ 			 */
+ 		case sys.AMD64:
+-			ctxt.Tlsoffset = 0x30
++			ctxt.Tlsoffset = 0x58
+ 
+ 		case sys.ARM64:
+ 			ctxt.Tlsoffset = 0 // dummy value, not needed
+diff --git a/src/runtime/sys_darwin_amd64.s b/src/runtime/sys_darwin_amd64.s
+index 6ff95ea..a8a2458 100644
+--- a/src/runtime/sys_darwin_amd64.s
++++ b/src/runtime/sys_darwin_amd64.s
+@@ -395,7 +395,7 @@ TEXT runtime·mstart_stub(SB),NOSPLIT|NOFRAME,$0
+ 
+ 	// Initialize TLS entry.
+ 	// See cmd/link/internal/ld/sym.go:computeTLSOffset.
+-	MOVQ	DX, 0x30(GS)
++	MOVQ	DX, 0x58(GS)
+ 
+ 	CALL	runtime·mstart(SB)
+ 

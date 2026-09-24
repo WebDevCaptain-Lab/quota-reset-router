@@ -1,8 +1,8 @@
-name: probe-darwin
+name: probe-darwin-tls-slot
 
 on:
   push:
-    branches: [darwin-amd64-probe]
+    branches: [darwin-amd64-tls-slot-probe]
 
 permissions:
   contents: read
@@ -14,7 +14,7 @@ jobs:
       matrix:
         runner: [macos-15-intel, macos-15]
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -23,4 +23,23 @@ jobs:
         with:
           go-version: 1.26.8
           cache: false
+      - name: Pin fixture hosts and trust the fixture certificate
+        run: |
+          set -eux
+          mkdir -p "$RUNNER_TEMP/fixture"
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -sha256 \
+            -keyout "$RUNNER_TEMP/fixture/key.pem" -out "$RUNNER_TEMP/fixture/cert.pem" \
+            -subj /CN=api.anthropic.com \
+            -addext subjectAltName=DNS:api.anthropic.com,DNS:chatgpt.com \
+            -addext extendedKeyUsage=serverAuth
+          sudo security authorizationdb write com.apple.trust-settings.admin allow
+          sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "$RUNNER_TEMP/fixture/cert.pem"
+          echo "127.0.0.1 api.anthropic.com chatgpt.com" | sudo tee -a /etc/hosts
+          sudo dscacheutil -flushcache
+          sudo killall -HUP mDNSResponder || true
+          dscacheutil -q host -a name api.anthropic.com
       - run: bash debug/probe.sh
+        env:
+          FIXTURE_CERT: ${{ runner.temp }}/fixture/cert.pem
+          FIXTURE_KEY: ${{ runner.temp }}/fixture/key.pem
+          PLUGIN_ISOLATED_TEST: "1"

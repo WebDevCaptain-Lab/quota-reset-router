@@ -197,7 +197,11 @@ def main():
             binary.write_bytes(extracted.read())
         binary.chmod(0o700)
         cert, key = root / "cert.pem", root / "key.pem"
-        subprocess.run(
+        # macOS: Go verifies with the system keychain, so CI pre-trusts a fixture cert.
+        if os.environ.get("FIXTURE_CERT"):
+            cert, key = Path(os.environ["FIXTURE_CERT"]), Path(os.environ["FIXTURE_KEY"])
+        else:
+          subprocess.run(
             [
                 "openssl",
                 "req",
@@ -249,7 +253,7 @@ def main():
             )
         plugin_dir = root / "plugins"
         plugin_dir.mkdir()
-        (plugin_dir / (PLUGIN + ".so")).write_bytes(library.read_bytes())
+        (plugin_dir / (PLUGIN + (".dylib" if sys.platform == "darwin" else ".so"))).write_bytes(library.read_bytes())
         config = root / "config.yaml"
         config.write_text(f"""host: 127.0.0.1
 port: 18318
@@ -411,11 +415,14 @@ plugins:
                     "credential routing fields changed"
                 )
             assert not fixture_errors, fixture_errors
-            memory = next(
-                line
-                for line in Path(f"/proc/{proc.pid}/status").read_text().splitlines()
-                if line.startswith("VmRSS:")
-            )
+            if sys.platform == "darwin":
+                memory = "RSS: " + subprocess.run(["ps", "-o", "rss=", "-p", str(proc.pid)], capture_output=True, text=True).stdout.strip() + " kB"
+            else:
+                memory = next(
+                    line
+                    for line in Path(f"/proc/{proc.pid}/status").read_text().splitlines()
+                    if line.startswith("VmRSS:")
+                )
             print(
                 "PASS: official release checksum verified; shadow/active, streaming, 32 concurrent requests, exhaustion, reset rollover, quota outage, 429 failover, hot-disable rollback; "
                 + memory
