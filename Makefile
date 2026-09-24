@@ -14,7 +14,8 @@ ZIP := dist/release/$(PLUGIN)_$(VERSION)_$(TARGET).zip
 CPA_ARCH := $(if $(filter arm64,$(TARGET_ARCH)),aarch64,$(TARGET_ARCH))
 CPA_ASSET := CLIProxyAPI_$(CPA_VERSION)_$(TARGET_OS)_$(CPA_ARCH).$(if $(filter windows,$(TARGET_OS)),zip,tar.gz)
 CPA_URL := https://github.com/router-for-me/CLIProxyAPI/releases/download/v$(CPA_VERSION)
-GO_BUILD := -trimpath -buildmode=c-shared -ldflags="-s -w"
+# -buildvcs=false: output depends only on the sources, and git in the build container rejects the mounted checkout's owner.
+GO_BUILD := -trimpath -buildvcs=false -buildmode=c-shared -ldflags="-s -w"
 CHECKS := test -z "$$(gofmt -l . | tee /dev/stderr)" && go vet ./... && go test -race -count=1 ./...
 # THIRD_PARTY_NOTICES.md names this runtime version, so the Windows build fails if the image installs another.
 MINGW_VERSION := 10.0.0-3
