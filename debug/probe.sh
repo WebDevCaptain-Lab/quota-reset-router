@@ -100,6 +100,7 @@ done
 summary ""
 summary "#### Full host smoke (patched toolchain)"
 if python3 tests/host_smoke.py "$CPA_TGZ" "$WORK/checksums.txt" "$WORK/patched/quota-reset-router.dylib" > "$WORK/smoke.out" 2>&1; then
+  summary "$(grep '^soak' "$WORK/smoke.out")"
   summary "$(grep '^PASS' "$WORK/smoke.out")"
 else
   summary "FAIL: $(tail -1 "$WORK/smoke.out")"

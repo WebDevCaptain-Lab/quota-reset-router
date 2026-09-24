@@ -43,3 +43,5 @@ jobs:
           FIXTURE_CERT: ${{ runner.temp }}/fixture/cert.pem
           FIXTURE_KEY: ${{ runner.temp }}/fixture/key.pem
           PLUGIN_ISOLATED_TEST: "1"
+          SOAK_SECONDS: "180"
+          GOGC: "10"

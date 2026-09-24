@@ -223,7 +223,9 @@ def main():
             check=True,
             capture_output=True,
         )
-        server = http.server.ThreadingHTTPServer(("127.0.0.1", 443), Fixture)
+        # macOS lets unprivileged processes bind ports below 1024 only on the wildcard address.
+        bind = "0.0.0.0" if sys.platform == "darwin" else "127.0.0.1"
+        server = http.server.ThreadingHTTPServer((bind, 443), Fixture)
         tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         tls.load_cert_chain(cert, key)
         server.socket = tls.wrap_socket(server.socket, server_side=True)
@@ -371,6 +373,15 @@ plugins:
                     list(pool.map(lambda _: message(), range(32)))
                     == ["z-five-hours"] * 32
                 )
+            soak = float(os.environ.get("SOAK_SECONDS", "0"))
+            if soak:
+                end, count = time.monotonic() + soak, 0
+                with ThreadPoolExecutor(max_workers=16) as pool:
+                    while time.monotonic() < end:
+                        got = list(pool.map(lambda i: message(i % 4 == 0), range(64)))
+                        assert all("z-five-hours" in g for g in got), "soak routing failed"
+                        count += len(got)
+                print(f"soak: {count} requests over {soak:.0f}s, status {status()['mode']}")
             exhausted.add("z-five-hours")
             configure("active", "1m")
             assert message() == "c-one-day", "short-window exhausted account selected"
