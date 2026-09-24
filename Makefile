@@ -29,7 +29,7 @@ ifeq ($(filter $(TARGET),$(TARGETS)),)
 $(error TARGET must be one of: $(TARGETS))
 endif
 
-.PHONY: test linux-test build zip checksums release-assets native-test host-test cpa clean
+.PHONY: test linux-test build zip checksums release-assets native-test host-test load-test cpa clean
 
 test:
 	$(CHECKS)
@@ -71,6 +71,10 @@ native-test:
 host-test: cpa
 	$(LINUX_ONLY)
 	$(call docker,$(TARGET_ARCH)) --cpus 1 --memory 384m --memory-swap 384m $(ISOLATED) $(IMAGE) python3 tests/host_smoke.py dist/cpa/$(CPA_ASSET) dist/cpa/checksums.txt $(LIB)
+
+# Runs on this machine, so TARGET must match it.
+load-test: cpa
+	python3 tests/load_smoke.py dist/cpa/$(CPA_ASSET) dist/cpa/checksums.txt $(ZIP)
 
 cpa:
 	mkdir -p dist/cpa
