@@ -3,7 +3,8 @@ GO_VERSION := 1.26.8
 CPA_VERSION := 7.3.15
 PLUGIN := quota-reset-router
 VERSION := $(shell sed -n 's/^const pluginVersion = "\(.*\)"/\1/p' config.go)
-TARGETS := linux_amd64 linux_arm64 darwin_amd64 darwin_arm64 windows_amd64
+# No darwin_amd64: CLIProxyAPI crashes loading any Go plugin there, because all Go runtimes in a process share one TLS slot.
+TARGETS := linux_amd64 linux_arm64 darwin_arm64 windows_amd64
 
 TARGET ?= linux_amd64
 TARGET_OS := $(word 1,$(subst _, ,$(TARGET)))

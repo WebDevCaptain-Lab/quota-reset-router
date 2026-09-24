@@ -47,7 +47,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { target: darwin_amd64, runner: macos-15-intel }
           - { target: darwin_arm64, runner: macos-15 }
     env:
       TARGET: ${{ matrix.target }}

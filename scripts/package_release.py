@@ -21,7 +21,6 @@ PLUGIN_ID = "quota-reset-router"
 EXTENSIONS = {
     "linux_amd64": "so",
     "linux_arm64": "so",
-    "darwin_amd64": "dylib",
     "darwin_arm64": "dylib",
     "windows_amd64": "dll",
 }
@@ -66,7 +65,7 @@ def checksums(version):
     ]
     missing = [path.name for path in archives if not path.is_file()]
     if missing:
-        # The plugin store expects a listed plugin to ship every platform.
+        # A partial set would break plugin store installs on the missing platforms.
         sys.exit(f"missing release archives: {', '.join(missing)}")
     lines = "".join(
         f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n"

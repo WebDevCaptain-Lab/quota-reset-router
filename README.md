@@ -41,7 +41,8 @@ Ordering is not guaranteed in these cases. Quota can also change between refresh
 ## Requirements
 
 - CLIProxyAPI v7.3.15 (plugin ABI 1, schema 6). Other versions are untested.
-- Linux amd64 or arm64 (glibc 2.34 or newer), macOS amd64 or arm64, or Windows amd64.
+- Linux amd64 or arm64 (glibc 2.34 or newer), macOS on Apple silicon (arm64), or Windows amd64.
+- Intel Macs are not supported. On macOS amd64, CLIProxyAPI v7.3.15 crashes when it loads a Go plugin (its own Go scheduler example crashes the same way), because every Go runtime in a process shares one TLS slot on that platform.
 - Direct network access to both quota endpoints. Credentials with `proxy_url` or `base_url` are skipped. Quota polling ignores CLIProxyAPI's `proxy-url` and proxy environment variables.
 
 ## Install
@@ -110,7 +111,7 @@ Requires Management API authentication. Returns the version, mode, selection pol
 
 ## Development
 
-Build and test targets take `TARGET`: `linux_amd64` (default), `linux_arm64`, `darwin_amd64`, `darwin_arm64`, or `windows_amd64`.
+Build and test targets take `TARGET`: `linux_amd64` (default), `linux_arm64`, `darwin_arm64`, or `windows_amd64`.
 
 - Linux and Windows builds, `linux-test`, `native-test`, and `host-test` run in a pinned Docker image.
 - macOS builds need a macOS host with Go 1.21+ and the Xcode Command Line Tools. Go 1.26.8 is downloaded automatically.
@@ -129,7 +130,7 @@ make load-test    # loads the zip into the official CLIProxyAPI; TARGET must mat
 - `host-test` and `load-test` download the official CLIProxyAPI v7.3.15 release and verify its checksum.
 - `native-test` and `host-test` run with networking disabled, local TLS fixtures, and synthetic credentials.
 - `load-test` starts CLIProxyAPI without credentials, so the plugin makes no network requests.
-- CI builds all five targets and loads each zip into the official CLIProxyAPI on its own platform.
+- CI builds every target and loads each zip into the official CLIProxyAPI on its own platform.
 - `make clean` removes build output.
 
 ## Release
