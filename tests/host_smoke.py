@@ -29,10 +29,13 @@ def main():
     assert os.environ.get("PLUGIN_ISOLATED_TEST") == "1", (
         "Requires a network-isolated test container"
     )
-    dist = Path(sys.argv[1]).resolve()
-    archive = dist / "CLIProxyAPI_7.3.15_linux_amd64.tar.gz"
+    if len(sys.argv) != 4:
+        sys.exit(
+            "usage: host_smoke.py <cpa-archive> <cpa-checksums.txt> <plugin-library>"
+        )
+    archive, checksums_path, library = (Path(arg).resolve() for arg in sys.argv[1:])
     checksums = dict(
-        line.split()[::-1] for line in (dist / "checksums.txt").read_text().splitlines()
+        line.split()[::-1] for line in checksums_path.read_text().splitlines()
     )
     assert hashlib.sha256(archive.read_bytes()).hexdigest() == checksums[archive.name]
     claude_ids = ["a-seven-days", "b-two-days", "c-one-day", "z-five-hours"]
@@ -246,9 +249,7 @@ def main():
             )
         plugin_dir = root / "plugins"
         plugin_dir.mkdir()
-        (plugin_dir / (PLUGIN + ".so")).write_bytes(
-            (dist / (PLUGIN + ".so")).read_bytes()
-        )
+        (plugin_dir / (PLUGIN + ".so")).write_bytes(library.read_bytes())
         config = root / "config.yaml"
         config.write_text(f"""host: 127.0.0.1
 port: 18318
