@@ -41,21 +41,14 @@ Ordering is not guaranteed in these cases. Quota can also change between refresh
 ## Requirements
 
 - CLIProxyAPI v7.3.15 (plugin ABI 1, schema 6). Other versions are untested.
-- Linux amd64 with glibc 2.36 or newer.
+- Linux amd64 or arm64 (glibc 2.34 or newer), macOS amd64 or arm64, or Windows amd64.
 - Direct network access to both quota endpoints. Credentials with `proxy_url` or `base_url` are skipped. Quota polling ignores CLIProxyAPI's `proxy-url` and proxy environment variables.
-
-## Build
-
-Requires Docker.
-
-```sh
-make linux-build   # writes dist/quota-reset-router.so
-```
 
 ## Install
 
-1. Copy `dist/quota-reset-router.so` into CLIProxyAPI's plugin directory (`plugins.dir`) as a regular file. Symlinks are not loaded.
-2. Merge into `config.yaml`:
+1. Download `quota-reset-router_<version>_<os>_<arch>.zip` for your platform from the [latest release](https://github.com/WebDevCaptain/quota-reset-router/releases/latest) and check it against `checksums.txt`. Optionally verify its build provenance: `gh attestation verify <zip> --repo WebDevCaptain/quota-reset-router`.
+2. Extract `quota-reset-router.so` (Linux), `quota-reset-router.dylib` (macOS), or `quota-reset-router.dll` (Windows) into CLIProxyAPI's plugin directory (`plugins.dir`) as a regular file. Symlinks are not loaded.
+3. Merge into `config.yaml`:
 
    ```yaml
    plugins:
@@ -68,8 +61,8 @@ make linux-build   # writes dist/quota-reset-router.so
          mode: shadow
    ```
 
-3. Restart CLIProxyAPI.
-4. Review the status endpoint. When the proposed choices are correct, switch `mode` to `active`.
+4. Restart CLIProxyAPI.
+5. Review the status endpoint. When the proposed choices are correct, switch `mode` to `active`.
 
 `priority` orders plugins, not accounts. CLIProxyAPI consults only the highest-priority scheduler plugin.
 
@@ -106,7 +99,7 @@ Requires Management API authentication. Returns the version, mode, selection pol
   {"enabled": false}
   ```
 
-- **Upgrade:** stop CLIProxyAPI, replace the `.so`, start CLIProxyAPI.
+- **Upgrade:** stop CLIProxyAPI, replace the plugin file, start CLIProxyAPI.
 
 ## Limitations
 
@@ -117,34 +110,38 @@ Requires Management API authentication. Returns the version, mode, selection pol
 
 ## Development
 
-Local tests require Go 1.26+ and a C toolchain. Container targets require Docker.
+Build and test targets take `TARGET`: `linux_amd64` (default), `linux_arm64`, `darwin_amd64`, `darwin_arm64`, or `windows_amd64`.
+
+- Linux and Windows builds, `linux-test`, `native-test`, and `host-test` run in a pinned Docker image.
+- macOS builds need a macOS host with Go 1.21+ and the Xcode Command Line Tools. Go 1.26.8 is downloaded automatically.
+- `make test` needs Go 1.26+ and a C toolchain.
 
 ```sh
-make test          # unit tests with the race detector
-make linux-test    # same, in the pinned Linux container
-make linux-build
-make native-test   # loads the built .so through the plugin C ABI
+make test         # gofmt, go vet, and unit tests with the race detector
+make linux-test   # same, in the pinned Linux container
+make build        # writes dist/<target>/quota-reset-router.<so|dylib|dll>
+make native-test  # Linux only: loads the library through the plugin C ABI
+make host-test    # Linux only: runs the official CLIProxyAPI release with the library
+make zip          # writes dist/release/quota-reset-router_<version>_<target>.zip
+make load-test    # loads the zip into the official CLIProxyAPI; TARGET must match this machine
 ```
 
-Integration test against the official CLIProxyAPI release:
-
-```sh
-gh release download v7.3.15 --repo router-for-me/CLIProxyAPI \
-  --pattern CLIProxyAPI_7.3.15_linux_amd64.tar.gz \
-  --pattern checksums.txt --dir dist
-make host-test
-```
-
-Native and integration tests run with networking disabled, local TLS fixtures, and synthetic credentials. `make clean` removes build output.
+- `host-test` and `load-test` download the official CLIProxyAPI v7.3.15 release and verify its checksum.
+- `native-test` and `host-test` run with networking disabled, local TLS fixtures, and synthetic credentials.
+- `load-test` starts CLIProxyAPI without credentials, so the plugin makes no network requests.
+- CI builds all five targets and loads each zip into the official CLIProxyAPI on its own platform.
+- `make clean` removes build output.
 
 ## Release
 
-The CLIProxyAPI plugin store installs from this repository's latest GitHub release.
+The CLIProxyAPI plugin store installs from this repository's latest published GitHub release. Each release contains `checksums.txt` and one `quota-reset-router_<version>_<os>_<arch>.zip` per target, holding the plugin, `LICENSE`, and `THIRD_PARTY_NOTICES.md`.
 
-1. Set `pluginVersion` in `config.go`, for example `0.2.0`.
-2. Run `make package`. It writes `dist/release/quota-reset-router_<version>_linux_amd64.zip` (plugin, `LICENSE`, `THIRD_PARTY_NOTICES.md`) and `dist/release/checksums.txt`.
-3. Publish a GitHub release tagged `v<version>` with both files attached.
+1. Set `pluginVersion` in `config.go`, for example `0.2.0`, and merge to `main`.
+2. Push the tag `v<version>`. CI builds and tests every target, attests build provenance, and creates a draft release with the assets.
+3. Review the draft and publish it.
+
+`make release-assets` builds the same set locally on a macOS host with Docker.
 
 ## Third-party notices
 
-Binary releases link the CLIProxyAPI plugin SDK (MIT), `gopkg.in/yaml.v3` (MIT and Apache-2.0), and the Go standard library (BSD-3-Clause). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Binary releases link the CLIProxyAPI plugin SDK (MIT), `gopkg.in/yaml.v3` (MIT and Apache-2.0), and the Go standard library (BSD-3-Clause). Windows builds also statically link parts of the MinGW-w64 runtime. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
