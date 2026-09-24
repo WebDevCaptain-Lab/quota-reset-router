@@ -29,7 +29,7 @@ ifeq ($(filter $(TARGET),$(TARGETS)),)
 $(error TARGET must be one of: $(TARGETS))
 endif
 
-.PHONY: test linux-test build zip checksums release-assets native-test host-test load-test cpa clean
+.PHONY: test linux-test build zip checksums release-assets native-test host-test load-test cpa version clean
 
 test:
 	$(CHECKS)
@@ -80,6 +80,9 @@ cpa:
 	mkdir -p dist/cpa
 	test -f dist/cpa/checksums.txt || curl -fsSL -o dist/cpa/checksums.txt $(CPA_URL)/checksums.txt
 	test -f dist/cpa/$(CPA_ASSET) || curl -fsSL -o dist/cpa/$(CPA_ASSET) $(CPA_URL)/$(CPA_ASSET)
+
+version:
+	@echo $(VERSION)
 
 clean:
 	rm -rf dist coverage.out

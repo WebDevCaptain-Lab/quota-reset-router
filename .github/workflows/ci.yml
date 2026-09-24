@@ -1,0 +1,146 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  linux:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: linux_amd64, runner: ubuntu-24.04 }
+          - { target: linux_arm64, runner: ubuntu-24.04-arm }
+    env:
+      TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: make linux-test build zip native-test host-test load-test
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: plugin-${{ matrix.target }}
+          path: dist/release/*.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  darwin:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: darwin_amd64, runner: macos-15-intel }
+          - { target: darwin_arm64, runner: macos-15 }
+    env:
+      TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.8
+          cache: false
+      - run: make test build zip load-test
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: plugin-${{ matrix.target }}
+          path: dist/release/*.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  # Cross-compiled on Linux, then loaded by CLIProxyAPI on Windows in windows-test.
+  windows-build:
+    name: windows_amd64 build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      TARGET: windows_amd64
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: make build zip cpa
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: plugin-windows_amd64
+          path: dist/release/*.zip
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cpa-windows_amd64
+          path: dist/cpa/
+          if-no-files-found: error
+          retention-days: 1
+
+  windows-test:
+    name: windows_amd64
+    needs: windows-build
+    runs-on: windows-2025
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: plugin-windows_amd64
+          path: dist/release
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: cpa-windows_amd64
+          path: dist/cpa
+      - run: python tests/load_smoke.py dist/cpa/CLIProxyAPI_*_windows_amd64.zip dist/cpa/checksums.txt dist/release/quota-reset-router_*_windows_amd64.zip
+
+  # Publishing stays manual: this job only creates a draft release.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, darwin, windows-test]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write # create the draft release
+      id-token: write # sign build provenance
+      attestations: write # store build provenance
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check the tag matches pluginVersion
+        run: test "$GITHUB_REF_NAME" = "v$(make -s version)"
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: plugin-*
+          merge-multiple: true
+          path: dist/release
+      - run: make checksums
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/release/*.zip
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "$GITHUB_REF_NAME" --generate-notes dist/release/*.zip dist/release/checksums.txt
