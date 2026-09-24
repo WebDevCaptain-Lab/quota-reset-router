@@ -104,7 +104,10 @@ plugins:
             installed = sorted(p.relative_to(root).as_posix() for p in (root / "plugins").rglob("*") if p.is_file())
             print("files:", installed)
             assert f"plugins/darwin/{goarch}/{PLUGIN}-v{version}.dylib" in installed, installed
-            print(f"PASS: store install of {PLUGIN} {version} on darwin/{goarch}; status mode {status['mode']}")
+            time.sleep(20)
+            assert proc.poll() is None, "CPA exited within 20 s of loading the plugin"
+            assert api(f"/plugins/{PLUGIN}/status")["version"] == version
+            print(f"PASS: store install of {PLUGIN} {version} on darwin/{goarch}; status mode {status['mode']}; CPA still running 20 s later")
         except BaseException:
             log.flush()
             log.seek(0)

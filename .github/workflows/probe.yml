@@ -31,5 +31,3 @@ jobs:
             https://raw.githubusercontent.com/WebDevCaptain/CLIProxyAPI-Plugins-Store/85e5488a291e42607012fe57b4f8b50c9fde0cb3/registry.json 0.2.1 \
             2>&1 | grep -v 'level=' | tee out.txt
           grep '^PASS' out.txt >> "$GITHUB_STEP_SUMMARY"
-          sleep 20
-          echo "CPA survived 20 s after install" >> "$GITHUB_STEP_SUMMARY"
